@@ -4,7 +4,6 @@ dist/
 
 # Arquivos de ambiente
 .env
-.env.*
 
 # Arquivos temporários
 tmp/

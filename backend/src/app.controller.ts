@@ -2,21 +2,22 @@ import {
   Controller,
   Post,
   Get,
-  Param,
-  Res,
   UseInterceptors,
   UploadedFile,
+  Query,
+  Param,
 } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-import { Response } from 'express';
 import { AppService } from './app.service';
+import { VideoAnalysisService } from './video-analysis/video-analysis.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { File as MulterFile } from 'multer';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly videoAnalysisService: VideoAnalysisService,
+  ) {}
 
   @Post('/upload/video')
   @UseInterceptors(
@@ -28,25 +29,22 @@ export class AppController {
   )
   async uploadVideo(@UploadedFile() file: MulterFile) {
     try {
-      const result = await this.appService.uploadVideo(file);
+      const result = await this.appService.processVideo(file);
 
-      if (!result.success || !fs.existsSync(result.audioPath)) {
+      if (!result.success) {
         throw new Error('Falha ao processar o vídeo');
       }
 
       return {
         success: true,
-        message: 'Vídeo processado e transcrito com sucesso',
-        audioFilename: path.basename(result.audioPath),
-        audioPath: result.audioPath,
-        transcriptionFilename: result.transcriptionPath
-          ? path.basename(result.transcriptionPath)
-          : null,
-        transcriptionPath: result.transcriptionPath,
-        transcription: result.transcription,
+        message: 'Vídeo processado, transcrito e analisado com sucesso',
+        title: result.title,
+        description: result.description,
+        summary: result.summary,
+        tags: result.tags,
       };
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('Erro no processamento do vídeo:', error);
       return {
         success: false,
         message: 'Erro ao processar o vídeo',
@@ -55,37 +53,68 @@ export class AppController {
     }
   }
 
-  @Get('/download/transcription/:filename')
-  downloadTranscription(
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ) {
+  @Get('/analyses')
+  async getAllAnalyses() {
     try {
-      const tmpDir = path.join(process.cwd(), 'tmp');
-      const filePath = path.join(tmpDir, filename);
+      const analyses = await this.videoAnalysisService.findAll();
+      return {
+        success: true,
+        data: analyses,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Erro ao buscar análises',
+        error: error.message,
+      };
+    }
+  }
 
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({
+  @Get('/analyses/search')
+  async searchAnalyses(@Query('q') query: string) {
+    try {
+      if (!query) {
+        return {
           success: false,
-          message: 'Arquivo de transcrição não encontrado',
-        });
+          message: 'Parâmetro de busca é obrigatório',
+        };
       }
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${filename}"`,
-      );
-
-      const fileStream = fs.createReadStream(filePath);
-      fileStream.pipe(res);
+      const analyses = await this.videoAnalysisService.searchByText(query);
+      return {
+        success: true,
+        data: analyses,
+      };
     } catch (error) {
-      console.error('Erro ao baixar transcrição:', error);
-      return res.status(500).json({
+      return {
         success: false,
-        message: 'Erro interno do servidor',
+        message: 'Erro ao buscar análises',
         error: error.message,
-      });
+      };
+    }
+  }
+
+  @Get('/analyses/:filename')
+  async getAnalysisByFilename(@Param('filename') filename: string) {
+    try {
+      const analysis = await this.videoAnalysisService.findByFilename(filename);
+      if (!analysis) {
+        return {
+          success: false,
+          message: 'Análise não encontrada',
+        };
+      }
+
+      return {
+        success: true,
+        data: analysis,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Erro ao buscar análise',
+        error: error.message,
+      };
     }
   }
 }

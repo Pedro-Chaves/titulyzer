@@ -4,23 +4,26 @@ import axios from 'axios';
 
 @Injectable()
 export class TranscriptionService {
-  private readonly apiKey: string;
+  private readonly apiKey: string | undefined;
 
   constructor() {
-    const apiKey = process.env.GOOGLE_SPEECH_API_KEY;
-    if (!apiKey) {
-      console.error(
-        '❌ Erro: GOOGLE_SPEECH_API_KEY não está definida nas variáveis de ambiente',
+    this.apiKey = process.env.GOOGLE_SPEECH_API_KEY;
+    if (!this.apiKey) {
+      console.warn(
+        '⚠️  GOOGLE_SPEECH_API_KEY não está definida. O serviço de transcrição não funcionará.',
       );
-      throw new Error(
-        'GOOGLE_SPEECH_API_KEY não está definida nas variáveis de ambiente',
-      );
+    } else {
+      console.log('✅ Serviço de transcrição configurado com sucesso');
     }
-    this.apiKey = apiKey;
-    console.log('✅ Serviço de transcrição configurado com sucesso');
   }
 
   async transcribeAudio(audioPath: string): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error(
+        'GOOGLE_SPEECH_API_KEY não está configurada. Configure a variável de ambiente para usar o serviço de transcrição.',
+      );
+    }
+
     console.log('Iniciando transcrição do áudio:', audioPath);
 
     if (!fs.existsSync(audioPath)) {

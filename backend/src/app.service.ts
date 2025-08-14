@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { File as MulterFile } from 'multer';
 import { UploadResult } from './interfaces/upload-result.interface';
+import { VideoAnalysisService } from './video-analysis/video-analysis.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { promisify } from 'util';
 import { TranscriptionService } from './transcription/transcription.service';
+import { AiService } from './ai/ai.service';
 
 const pipeline = promisify(require('stream').pipeline);
 const ffmpeg = require('fluent-ffmpeg');
@@ -14,27 +16,57 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 @Injectable()
 export class AppService {
-  constructor(private readonly transcriptionService: TranscriptionService) {}
+  constructor(
+    private readonly transcriptionService: TranscriptionService,
+    private readonly aiService: AiService,
+    private readonly videoAnalysisService: VideoAnalysisService,
+  ) {}
 
-  async uploadVideo(file: MulterFile): Promise<UploadResult> {
+  async processVideo(file: MulterFile): Promise<UploadResult> {
     try {
-      const audio = await this.audioExtract(file);
+      // 1. Extrair áudio do vídeo
+      const audio = await this.extractAudio(file);
+
+      // 2. Transcrever áudio
       const transcription = await this.transcriptionService.transcribeAudio(
         audio.audioPath,
       );
 
-      // Criar arquivo de transcrição
+      // 3. Gerar análise de conteúdo com IA
+      console.log('🤖 Gerando análise de conteúdo...');
+      const analysis = await this.aiService.analyzeVideoContent(
+        transcription,
+        file.originalname,
+      );
+
+      // 4. Salvar arquivo de transcrição
       const transcriptionPath = await this.saveTranscription(
         transcription,
         file.originalname,
       );
 
+      // 5. Salvar análise no banco de dados
+      const filename = path.basename(audio.audioPath, '.wav');
+      await this.saveAnalysisToDatabase(
+        analysis,
+        transcription,
+        file.originalname,
+        filename,
+      );
+
       console.log('✅ Transcrição salva em:', transcriptionPath);
+      console.log('✅ Análise salva no banco de dados');
+      console.log('🎬 Título gerado:', analysis.title);
+
+      // 6. Limpar arquivos temporários
+      await this.cleanupTemporaryFiles(audio.audioPath, transcriptionPath);
 
       return {
         ...audio,
-        transcriptionPath,
-        transcription,
+        title: analysis.title,
+        description: analysis.description,
+        summary: analysis.summary,
+        tags: analysis.tags,
       };
     } catch (error) {
       console.error('Erro ao processar arquivo:', error);
@@ -59,7 +91,51 @@ export class AppService {
     return transcriptionPath;
   }
 
-  private async audioExtract(file: MulterFile): Promise<UploadResult> {
+  private async saveAnalysisToDatabase(
+    analysis: {
+      title: string;
+      description: string;
+      summary: string;
+      tags: string[];
+      aiModel: string;
+    },
+    transcription: string,
+    originalName: string,
+    filename: string,
+  ): Promise<void> {
+    await this.videoAnalysisService.createAnalysis({
+      filename,
+      originalName,
+      summary: analysis.summary,
+      tags: analysis.tags,
+      aiModel: analysis.aiModel,
+      transcription,
+    });
+  }
+
+  private async cleanupTemporaryFiles(
+    audioPath: string,
+    transcriptionPath: string,
+  ): Promise<void> {
+    try {
+      // Remove arquivo de áudio temporário
+      if (fs.existsSync(audioPath)) {
+        await fs.promises.unlink(audioPath);
+        console.log('🗑️ Arquivo de áudio removido:', audioPath);
+      }
+
+      // Remove arquivo de transcrição temporário
+      if (fs.existsSync(transcriptionPath)) {
+        await fs.promises.unlink(transcriptionPath);
+        console.log('🗑️ Arquivo de transcrição removido:', transcriptionPath);
+      }
+    } catch (error) {
+      console.error('⚠️ Erro ao limpar arquivos temporários:', error);
+      // Não propaga o erro para não afetar o resultado principal
+    }
+  }
+
+  private async extractAudio(file: MulterFile): Promise<UploadResult> {
     const tmpDir = path.join(process.cwd(), 'tmp');
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir);
