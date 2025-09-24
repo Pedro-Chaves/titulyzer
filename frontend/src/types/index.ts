@@ -8,10 +8,12 @@ export interface VideoAnalysis {
 }
 
 export interface UploadResponse {
+  success: boolean;
   message: string;
-  filename: string;
-  transcription: string;
-  analysis: string;
+  title: string;
+  description: string;
+  summary: string;
+  tags: string[];
 }
 
 export interface SearchResponse {

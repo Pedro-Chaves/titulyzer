@@ -1,20 +1,20 @@
 import axios from 'axios';
 import { UploadResponse, VideoAnalysis, SearchResponse } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3030';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 300000, // 5 minutes timeout for large video uploads
+  timeout: 600000, // 10 minutes timeout for large video uploads
 });
 
 export const videoService = {
   // Upload e análise de vídeo
   uploadVideo: async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
     const formData = new FormData();
-    formData.append('video', file);
+    formData.append('file', file);
 
-    const response = await api.post<UploadResponse>('/upload', formData, {
+    const response = await api.post<UploadResponse>('/upload/video', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

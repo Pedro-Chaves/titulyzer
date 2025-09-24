@@ -156,7 +156,11 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({
                 style={{ width: `${uploadProgress}%` }}
               ></div>
             </div>
-            <p>Enviando... {uploadProgress}%</p>
+            <p>
+              {uploadProgress < 100 
+                ? `Enviando... ${uploadProgress}%` 
+                : 'Processando vídeo...'}
+            </p>
           </div>
         )}
       </div>

@@ -16,27 +16,37 @@ export const HomePage: React.FC = () => {
   const handleFileUpload = async (file: File) => {
     try {
       setError('');
-      setIsUploading(true);
       setCurrentFile(file.name);
       setUploadProgress(0);
+      setIsUploading(true);
+      
+      // Inicia o processo completo (upload + análise)
+      setIsAnalyzing(true);
 
-      // Simular progresso de upload
+      // Upload e processamento em uma única chamada
       const response = await videoService.uploadVideo(file, (progress) => {
         setUploadProgress(progress);
       });
 
-      setIsUploading(false);
-      setIsAnalyzing(true);
-
-      // A análise já foi feita no backend, então podemos mostrar o resultado
+      // Processamento concluído
       setAnalysisResult(response);
       setIsAnalyzing(false);
+      setIsUploading(false);
 
     } catch (err: any) {
       setIsUploading(false);
-      setIsAnalyzing(false);
-      setError(err.response?.data?.message || 'Erro ao processar o vídeo. Tente novamente.');
       console.error('Erro no upload:', err);
+      
+      // Verificar se é erro de timeout
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        // Para timeout, manter o estado de análise e mostrar mensagem especial
+        setError('A análise está demorando mais que o esperado. O vídeo pode ser grande. Aguarde mais um pouco ou cancele se necessário.');
+        // Manter isAnalyzing = true para continuar mostrando o loading
+      } else {
+        // Para outros erros, parar a análise
+        setIsAnalyzing(false);
+        setError(err.response?.data?.message || 'Erro ao processar o vídeo. Tente novamente.');
+      }
     }
   };
 
@@ -47,9 +57,17 @@ export const HomePage: React.FC = () => {
     setUploadProgress(0);
   };
 
-  if (isAnalyzing) {
-    return <LoadingAnalysis filename={currentFile} />;
-  }
+  const handleStopAnalysis = () => {
+    setIsAnalyzing(false);
+    setIsUploading(false);
+    setError('');
+    setCurrentFile('');
+    setUploadProgress(0);
+  };
+
+  const handleContinueAnalysis = () => {
+    setError(''); // Limpa a mensagem de timeout para continuar aguardando
+  };
 
   if (analysisResult) {
     return (
@@ -57,21 +75,55 @@ export const HomePage: React.FC = () => {
         <div className="result-container">
           <div className="result-header">
             <h1>✅ Análise Concluída!</h1>
-            <p className="filename">📹 {analysisResult.filename}</p>
+            <p className="filename">📹 {currentFile}</p>
           </div>
 
           <div className="result-content">
             <div className="result-section">
-              <h2>📝 Transcrição</h2>
+              <h2>🎬 Título</h2>
               <div className="transcription-box">
-                <p>{analysisResult.transcription || 'Nenhuma transcrição encontrada.'}</p>
+                <p>
+                  {analysisResult.title && analysisResult.title.trim() 
+                    ? analysisResult.title 
+                    : 'Nenhum título identificado.'}
+                </p>
               </div>
             </div>
 
             <div className="result-section">
-              <h2>🤖 Análise de IA</h2>
+              <h2>📝 Descrição</h2>
               <div className="analysis-box">
-                <p>{analysisResult.analysis || 'Nenhuma análise disponível.'}</p>
+                <p>
+                  {analysisResult.description && analysisResult.description.trim()
+                    ? analysisResult.description 
+                    : 'Nenhuma descrição disponível.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="result-section">
+              <h2>📋 Resumo</h2>
+              <div className="analysis-box">
+                <p>
+                  {analysisResult.summary && analysisResult.summary.trim()
+                    ? analysisResult.summary 
+                    : 'Nenhum resumo disponível.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="result-section">
+              <h2>🏷️ Tags</h2>
+              <div className="tags-container">
+                {analysisResult.tags && analysisResult.tags.length > 0 ? (
+                  analysisResult.tags.map((tag, index) => (
+                    <span key={index} className="tag">
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <p>Nenhuma tag identificada.</p>
+                )}
               </div>
             </div>
           </div>
@@ -102,7 +154,7 @@ export const HomePage: React.FC = () => {
         uploadProgress={uploadProgress}
       />
 
-      {error && (
+      {error && !isAnalyzing && (
         <div className="error-message">
           <h3>❌ Erro</h3>
           <p>{error}</p>
@@ -138,6 +190,16 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Loading overlay */}
+      {isAnalyzing && (
+        <LoadingAnalysis 
+          filename={currentFile} 
+          error={error}
+          onCancel={handleStopAnalysis}
+          onContinue={handleContinueAnalysis}
+        />
+      )}
     </div>
   );
 };
