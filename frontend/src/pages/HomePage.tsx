@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { VideoUpload } from '../components/VideoUpload';
 import { LoadingAnalysis } from '../components/LoadingAnalysis';
+import { AnalysesList } from '../components/AnalysesList';
 import { videoService } from '../services/api';
-import { UploadResponse } from '../types';
+import { UploadResponse, VideoAnalysis } from '../types';
 import './HomePage.css';
 
 export const HomePage: React.FC = () => {
@@ -12,6 +13,11 @@ export const HomePage: React.FC = () => {
   const [currentFile, setCurrentFile] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<UploadResponse | null>(null);
   const [error, setError] = useState<string>('');
+  const [showAnalysesList, setShowAnalysesList] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<VideoAnalysis[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<'filename' | 'content' | null>(null);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -67,6 +73,69 @@ export const HomePage: React.FC = () => {
 
   const handleContinueAnalysis = () => {
     setError(''); // Limpa a mensagem de timeout para continuar aguardando
+  };
+
+  const handleAnalysisSelect = (analysis: VideoAnalysis) => {
+    if (!analysis) {
+      setError('Erro: análise inválida selecionada');
+      return;
+    }
+    
+    // Converter VideoAnalysis para UploadResponse format
+    const result: UploadResponse = {
+      success: true,
+      message: 'Análise carregada do histórico',
+      title: analysis?.filename || 'Arquivo sem nome',
+      description: analysis?.analysis || 'Análise não disponível',
+      summary: analysis?.transcription || 'Transcrição não disponível',
+      tags: [] // VideoAnalysis não tem tags no formato atual
+    };
+    
+    setAnalysisResult(result);
+    setCurrentFile(analysis?.filename || 'Arquivo sem nome');
+    setShowAnalysesList(false);
+  };
+
+  const handleShowAnalyses = () => {
+    setShowAnalysesList(true);
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    try {
+      setIsSearching(true);
+      setError('');
+      
+      const { results, searchType: type } = await videoService.searchAnalyses(searchQuery);
+      setSearchResults(results);
+      setSearchType(type);
+      
+      // Se encontrou resultados, mostrar a lista com os resultados filtrados
+      if (results.length > 0) {
+        setShowAnalysesList(true);
+      } else {
+        setError(`Nenhuma análise encontrada para "${searchQuery}"`);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao realizar busca');
+      console.error('Erro na busca:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchType(null);
+    setError('');
   };
 
   if (analysisResult) {
@@ -129,6 +198,9 @@ export const HomePage: React.FC = () => {
           </div>
 
           <div className="result-actions">
+            <button className="home-button" onClick={handleStartOver}>
+              🏠 Voltar ao Início
+            </button>
             <button className="primary-button" onClick={handleStartOver}>
               Analisar Novo Vídeo
             </button>
@@ -144,8 +216,47 @@ export const HomePage: React.FC = () => {
   return (
     <div className="homepage-container">
       <div className="homepage-header">
-        <h1>🎬 Titulyzer</h1>
-        <p>Análise inteligente de vídeos com transcrição automática e insights de IA</p>
+        <div className="header-content">
+          <div className="header-text">
+            <h1>🎬 Titulyzer</h1>
+            <p>Análise inteligente de vídeos com transcrição automática e insights de IA</p>
+          </div>
+          
+          <div className="header-actions">
+            <div className="search-container">
+              <div className="search-box">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Buscar por nome ou conteúdo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                />
+                <button 
+                  className="search-button" 
+                  onClick={handleSearch}
+                  disabled={isSearching || !searchQuery.trim()}
+                >
+                  {isSearching ? '⏳' : '🔍'}
+                </button>
+              </div>
+              
+              {searchQuery && searchType && (
+                <div className="search-hint">
+                  {searchType === 'filename' 
+                    ? "🎬 Buscando por nome de arquivo" 
+                    : "📝 Buscando no conteúdo das análises"
+                  }
+                </div>
+              )}
+            </div>
+            
+            <button className="history-button" onClick={handleShowAnalyses}>
+              📚 Histórico
+            </button>
+          </div>
+        </div>
       </div>
 
       <VideoUpload
@@ -198,6 +309,20 @@ export const HomePage: React.FC = () => {
           error={error}
           onCancel={handleStopAnalysis}
           onContinue={handleContinueAnalysis}
+        />
+      )}
+      
+      {/* Analyses List Modal */}
+      {showAnalysesList && (
+        <AnalysesList 
+          onAnalysisSelect={handleAnalysisSelect}
+          onClose={() => {
+            setShowAnalysesList(false);
+            clearSearch();
+          }}
+          searchResults={searchResults.length > 0 ? searchResults : undefined}
+          searchQuery={searchQuery}
+          searchType={searchType || undefined}
         />
       )}
     </div>

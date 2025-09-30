@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { UploadResponse, VideoAnalysis, SearchResponse } from '../types';
+import { UploadResponse, VideoAnalysis } from '../types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3030';
 
@@ -31,19 +31,67 @@ export const videoService = {
 
   // Buscar todas as análises (histórico)
   getAllAnalyses: async (): Promise<VideoAnalysis[]> => {
-    const response = await api.get<VideoAnalysis[]>('/video-analysis');
-    return response.data;
+    try {
+      const response = await api.get('/analyses');
+      
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      
+      // Se não for um array, retorna array vazio
+      if (response.data?.success) {
+        return [];
+      }
+      
+      throw new Error(response.data?.message || 'Erro ao buscar análises');
+    } catch (error: any) {
+      console.error('Erro na API getAllAnalyses:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Erro ao conectar com o servidor');
+    }
   },
 
   // Buscar por nome do arquivo
-  searchByFilename: async (filename: string): Promise<SearchResponse> => {
-    const response = await api.get<SearchResponse>(`/video-analysis/search/filename/${encodeURIComponent(filename)}`);
-    return response.data;
+  searchByFilename: async (filename: string): Promise<VideoAnalysis[]> => {
+    try {
+      const response = await api.get(`/analyses/${encodeURIComponent(filename)}`);
+      if (response.data?.success && response.data.data) {
+        return [response.data.data]; // Retorna como array para consistência
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Erro na busca por filename:', error);
+      return [];
+    }
   },
 
-  // Buscar por texto na transcrição
-  searchByText: async (text: string): Promise<SearchResponse> => {
-    const response = await api.get<SearchResponse>(`/video-analysis/search/text/${encodeURIComponent(text)}`);
-    return response.data;
+  // Buscar por texto na análise/transcrição
+  searchByText: async (text: string): Promise<VideoAnalysis[]> => {
+    try {
+      const response = await api.get(`/analyses/search?q=${encodeURIComponent(text)}`);
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Erro na busca por texto:', error);
+      return [];
+    }
+  },
+
+  // Busca inteligente - decide automaticamente o tipo
+  searchAnalyses: async (query: string): Promise<{ results: VideoAnalysis[], searchType: 'filename' | 'content' }> => {
+    const trimmedQuery = query.trim();
+    
+    // Se parece com nome de arquivo (tem extensão de vídeo)
+    const isFilename = /\.(mp4|avi|mov|mkv|wmv|flv|webm)$/i.test(trimmedQuery) || 
+                      (!trimmedQuery.includes(' ') && trimmedQuery.length > 3);
+    
+    if (isFilename) {
+      const results = await videoService.searchByFilename(trimmedQuery);
+      return { results, searchType: 'filename' };
+    } else {
+      const results = await videoService.searchByText(trimmedQuery);
+      return { results, searchType: 'content' };
+    }
   },
 };

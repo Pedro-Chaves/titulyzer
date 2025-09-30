@@ -9,7 +9,6 @@
 }
 
 .homepage-header {
-  text-align: center;
   margin-bottom: 50px;
   padding: 40px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -18,18 +17,129 @@
   box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
 }
 
-.homepage-header h1 {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 20px;
+}
+
+.header-text {
+  flex: 1;
+  text-align: left;
+}
+
+.header-text h1 {
   font-size: 3rem;
   margin-bottom: 15px;
   font-weight: 700;
 }
 
-.homepage-header p {
+.header-text p {
   font-size: 1.2rem;
   opacity: 0.9;
-  max-width: 600px;
-  margin: 0 auto;
+  margin: 0;
   line-height: 1.5;
+}
+
+.history-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.history-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Search Styles */
+.search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-input {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 250px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.search-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.search-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  min-width: 45px;
+}
+
+.search-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.search-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .error-message {
@@ -300,6 +410,26 @@
   box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
+.home-button {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.home-button:hover {
+  background: linear-gradient(45deg, #5a6fd8, #6a42a3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
 @media (max-width: 768px) {
   .homepage-container {
     padding: 15px;
@@ -338,6 +468,54 @@
     padding: 25px 20px;
   }
   
+  /* Header responsive */
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .header-text {
+    text-align: center;
+  }
+  
+  .header-text h1 {
+    font-size: 2.5rem;
+  }
+  
+  .header-text p {
+    font-size: 1rem;
+  }
+  
+  .history-button {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  /* Search responsive */
+  .header-actions {
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    align-items: center;
+  }
+  
+  .search-input {
+    width: 200px;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  
+  .search-button {
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+  
+  .search-hint {
+    font-size: 11px;
+  }
+}
+  
   .result-header h1 {
     font-size: 2rem;
   }
@@ -348,7 +526,8 @@
   }
   
   .primary-button,
-  .secondary-button {
+  .secondary-button,
+  .home-button {
     width: 100%;
     max-width: 300px;
   }
@@ -366,4 +545,4 @@
     overflow-wrap: anywhere;
     hyphens: auto;
   }
-}
+
