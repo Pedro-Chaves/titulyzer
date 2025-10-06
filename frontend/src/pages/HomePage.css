@@ -10,11 +10,11 @@
 
 .homepage-header {
   margin-bottom: 50px;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20px;
-  color: white;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  background: var(--gradient-primary);
+  border-radius: var(--radius-xl);
+  color: var(--color-white);
+  box-shadow: var(--shadow-primary);
 }
 
 .header-content {
@@ -411,23 +411,23 @@
 }
 
 .home-button {
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
+  background: var(--gradient-primary-45);
+  color: var(--color-white);
   padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--transition-normal);
   min-width: 180px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-primary);
 }
 
 .home-button:hover {
-  background: linear-gradient(45deg, #5a6fd8, #6a42a3);
+  background: var(--gradient-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  box-shadow: var(--shadow-primary-hover);
 }
 
 @media (max-width: 768px) {

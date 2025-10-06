@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { UploadResponse, VideoAnalysis } from '../types';
+import { API_ENDPOINTS, UPLOAD_CONFIG, PATTERNS } from '../constants';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3030';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 600000, // 10 minutes timeout for large video uploads
+  timeout: UPLOAD_CONFIG.TIMEOUT,
 });
 
 export const videoService = {
@@ -14,7 +15,7 @@ export const videoService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post<UploadResponse>('/upload/video', formData, {
+    const response = await api.post<UploadResponse>(API_ENDPOINTS.UPLOAD, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -32,7 +33,7 @@ export const videoService = {
   // Buscar todas as análises (histórico)
   getAllAnalyses: async (): Promise<VideoAnalysis[]> => {
     try {
-      const response = await api.get('/analyses');
+      const response = await api.get(API_ENDPOINTS.ANALYSES);
       
       if (response.data?.success && Array.isArray(response.data.data)) {
         return response.data.data;
@@ -53,7 +54,7 @@ export const videoService = {
   // Buscar por nome do arquivo
   searchByFilename: async (filename: string): Promise<VideoAnalysis[]> => {
     try {
-      const response = await api.get(`/analyses/${encodeURIComponent(filename)}`);
+      const response = await api.get(`${API_ENDPOINTS.ANALYSES}/${encodeURIComponent(filename)}`);
       if (response.data?.success && response.data.data) {
         return [response.data.data]; // Retorna como array para consistência
       }
@@ -67,7 +68,7 @@ export const videoService = {
   // Buscar por texto na análise/transcrição
   searchByText: async (text: string): Promise<VideoAnalysis[]> => {
     try {
-      const response = await api.get(`/analyses/search?q=${encodeURIComponent(text)}`);
+      const response = await api.get(`${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(text)}`);
       if (response.data?.success && Array.isArray(response.data.data)) {
         return response.data.data;
       }
@@ -83,7 +84,7 @@ export const videoService = {
     const trimmedQuery = query.trim();
     
     // Se parece com nome de arquivo (tem extensão de vídeo)
-    const isFilename = /\.(mp4|avi|mov|mkv|wmv|flv|webm)$/i.test(trimmedQuery) || 
+    const isFilename = PATTERNS.VIDEO_EXTENSION.test(trimmedQuery) || 
                       (!trimmedQuery.includes(' ') && trimmedQuery.length > 3);
     
     if (isFilename) {

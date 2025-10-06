@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { File as MulterFile } from 'multer';
 import { UploadResult } from './interfaces/upload-result.interface';
 import { VideoAnalysisService } from './video-analysis/video-analysis.service';
@@ -16,6 +16,8 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 @Injectable()
 export class AppService {
+  private readonly logger = new Logger(AppService.name);
+
   constructor(
     private readonly transcriptionService: TranscriptionService,
     private readonly aiService: AiService,
@@ -33,7 +35,7 @@ export class AppService {
       );
 
       // 3. Gerar análise de conteúdo com IA
-      console.log('🤖 Gerando análise de conteúdo...');
+      this.logger.log('🤖 Gerando análise de conteúdo...');
       const analysis = await this.aiService.analyzeVideoContent(
         transcription,
         file.originalname,
@@ -54,9 +56,9 @@ export class AppService {
         filename,
       );
 
-      console.log('✅ Transcrição salva em:', transcriptionPath);
-      console.log('✅ Análise salva no banco de dados');
-      console.log('🎬 Título gerado:', analysis.title);
+      this.logger.log('✅ Transcrição salva em:', transcriptionPath);
+      this.logger.log('✅ Análise salva no banco de dados');
+      this.logger.log('🎬 Título gerado:', analysis.title);
 
       // 6. Limpar arquivos temporários
       await this.cleanupTemporaryFiles(audio.audioPath, transcriptionPath);
@@ -121,13 +123,13 @@ export class AppService {
       // Remove arquivo de áudio temporário
       if (fs.existsSync(audioPath)) {
         await fs.promises.unlink(audioPath);
-        console.log('🗑️ Arquivo de áudio removido:', audioPath);
+        this.logger.debug('🗑️ Arquivo de áudio removido:', audioPath);
       }
 
       // Remove arquivo de transcrição temporário
       if (fs.existsSync(transcriptionPath)) {
         await fs.promises.unlink(transcriptionPath);
-        console.log('🗑️ Arquivo de transcrição removido:', transcriptionPath);
+        this.logger.debug('🗑️ Arquivo de transcrição removido:', transcriptionPath);
       }
     } catch (error) {
       console.error('⚠️ Erro ao limpar arquivos temporários:', error);
@@ -153,11 +155,11 @@ export class AppService {
         .audioChannels(1)
         .audioFrequency(16000)
         .on('progress', (progress) => {
-          console.log('Processando:', progress.percent, '% concluído');
+          this.logger.debug('Processando:', progress.percent, '% concluído');
         })
         .save(audioPath)
         .on('end', async () => {
-          console.log('Áudio extraído com sucesso!');
+          this.logger.log('Áudio extraído com sucesso!');
           console.log('Caminho do áudio:', audioPath);
           try {
             resolve({

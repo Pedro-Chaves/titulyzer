@@ -1,19 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import axios from 'axios';
 
 @Injectable()
 export class TranscriptionService {
+  private readonly logger = new Logger(TranscriptionService.name);
   private readonly apiKey: string | undefined;
 
   constructor() {
     this.apiKey = process.env.GOOGLE_SPEECH_API_KEY;
     if (!this.apiKey) {
-      console.warn(
+      this.logger.warn(
         '⚠️  GOOGLE_SPEECH_API_KEY não está definida. O serviço de transcrição não funcionará.',
       );
     } else {
-      console.log('✅ Serviço de transcrição configurado com sucesso');
+      this.logger.log('✅ Serviço de transcrição configurado com sucesso');
     }
   }
 
@@ -24,33 +25,37 @@ export class TranscriptionService {
       );
     }
 
-    console.log('Iniciando transcrição do áudio:', audioPath);
+    this.logger.log('Iniciando transcrição do áudio:', audioPath);
 
     if (!fs.existsSync(audioPath)) {
       throw new Error('Arquivo de áudio não encontrado');
     }
 
     const stats = fs.statSync(audioPath);
-    console.log(`📁 Arquivo: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
+    this.logger.log(
+      `📁 Arquivo: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`,
+    );
 
     // Sempre usa chunks para arquivos grandes (mais de 5MB base64)
     const audioContent = fs.readFileSync(audioPath);
     const base64Content = audioContent.toString('base64');
     const base64SizeInMB = (base64Content.length / (1024 * 1024)).toFixed(2);
-    console.log(`📦 Tamanho base64: ${base64SizeInMB} MB`);
+    this.logger.log(`📦 Tamanho base64: ${base64SizeInMB} MB`);
 
     if (base64Content.length > 5 * 1024 * 1024) {
-      console.log(`🔪 Dividindo arquivo (${base64SizeInMB}MB) em chunks...`);
+      this.logger.log(
+        `🔪 Dividindo arquivo (${base64SizeInMB}MB) em chunks...`,
+      );
       return await this.processLargeAudioInChunks(audioPath);
     }
 
     // Para arquivos pequenos, transcrição direta
-    console.log('⚡ Transcrevendo arquivo pequeno...');
+    this.logger.log('⚡ Transcrevendo arquivo pequeno...');
     try {
       return await this.transcribeDirectly(base64Content);
     } catch (error) {
       if (error.message === 'FORCE_CHUNKS') {
-        console.log('🔄 Forçando uso de chunks devido ao erro...');
+        this.logger.warn('🔄 Forçando uso de chunks devido ao erro...');
         return await this.processLargeAudioInChunks(audioPath);
       }
       throw error;
@@ -97,7 +102,9 @@ export class TranscriptionService {
           errorMessage.includes('too long') ||
           errorMessage.includes('limit')
         ) {
-          console.log('🔄 Erro de tamanho detectado, tentando com chunks...');
+          this.logger.warn(
+            '🔄 Erro de tamanho detectado, tentando com chunks...',
+          );
           throw new Error('FORCE_CHUNKS');
         }
       }
@@ -107,7 +114,7 @@ export class TranscriptionService {
   }
 
   private async processLargeAudioInChunks(audioPath: string): Promise<string> {
-    console.log('🔪 Dividindo em chunks de 45 segundos...');
+    this.logger.log('🔪 Dividindo em chunks de 45 segundos...');
 
     const ffmpeg = require('fluent-ffmpeg');
     const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
@@ -121,7 +128,7 @@ export class TranscriptionService {
     try {
       const duration = await this.getAudioDuration(audioPath);
       const numChunks = Math.ceil(duration / chunkDuration);
-      console.log(`📊 ${numChunks} chunks de ${chunkDuration}s cada`);
+      this.logger.log(`📊 ${numChunks} chunks de ${chunkDuration}s cada`);
 
       // Cria os chunks
       for (let i = 0; i < numChunks; i++) {
@@ -131,7 +138,7 @@ export class TranscriptionService {
           `chunk-${i}-${Date.now()}.wav`,
         );
 
-        console.log(`🔄 Chunk ${i + 1}/${numChunks}...`);
+        this.logger.debug(`🔄 Chunk ${i + 1}/${numChunks}...`);
 
         await new Promise<void>((resolve, reject) => {
           ffmpeg(audioPath)
@@ -151,7 +158,7 @@ export class TranscriptionService {
 
       // Transcreve cada chunk
       for (let i = 0; i < chunks.length; i++) {
-        console.log(`🎵 Transcrevendo ${i + 1}/${chunks.length}...`);
+        this.logger.debug(`🎵 Transcrevendo ${i + 1}/${chunks.length}...`);
 
         try {
           const chunkTranscription = await this.transcribeChunk(chunks[i]);
@@ -165,7 +172,7 @@ export class TranscriptionService {
 
       await this.cleanupChunks(chunks);
 
-      console.log(
+      this.logger.log(
         `✅ ${transcriptions.length} chunks transcritos com sucesso!`,
       );
       return (

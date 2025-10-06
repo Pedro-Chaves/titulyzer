@@ -15,13 +15,3 @@ export interface UploadResponse {
   summary: string;
   tags: string[];
 }
-
-export interface SearchResponse {
-  analyses: VideoAnalysis[];
-  total: number;
-}
-
-export interface ApiError {
-  message: string;
-  statusCode: number;
-}
